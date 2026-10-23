@@ -72,7 +72,7 @@ object Prefs {
 
     fun forced(v: String) = when (v) { ON -> true; OFF -> false; else -> null }
 
-    val SERVER_NAME = str("server_name", "Android AirPlay", restart = true)
+    val SERVER_NAME = str("server_name", "S4", restart = true)
     val SERVER_PORT = int("server_port", 7000, 1..65535, restart = true)
     val AUTO_START = bool("auto_start", true)
     val BOOT_AUTO_START = bool("boot_auto_start", true)
@@ -100,6 +100,21 @@ object Prefs {
     val RESOLUTION = str("resolution", AUTO, restart = true) { it in setOf(AUTO, PORTRAIT, LANDSCAPE) || SIZE.matches(it) }
     val MAX_FPS = int("max_fps", 60, 1..Int.MAX_VALUE, restart = true)
     val OVERSCANNED = bool("overscanned", false, restart = true)
+    // S4: zoom the mirrored screen (100 = fit) and split the cut between top and bottom
+    val MIRROR_ZOOM = int("mirror_zoom", 128, 100..400)
+    val MIRROR_CROP_TOP = int("mirror_crop_top", 52, 0..100)
+    // S4: horizontal position when zoomed wider than the screen (0 = left edge, 50 = centre)
+    val MIRROR_PAN_X = int("mirror_pan_x", 50, 0..100)
+    // S4: touch on the mirror drives the phone as a Bluetooth mouse
+    val HID_ENABLED = bool("hid_enabled", true)
+    val HID_COUNTS_W = int("hid_counts_w", 402, 10..10000)
+    val HID_COUNTS_H = int("hid_counts_h", 874, 10..10000)
+    val HID_OFFSET_X = int("hid_offset_x", 0, -2000..2000)
+    val HID_OFFSET_Y = int("hid_offset_y", 0, -2000..2000)
+    // pointer step per Bluetooth report (18 tested best with the iPhone's Tracking Speed at its
+    // lowest: 24-30 lost accuracy). Not in the settings screen; adb only. Recalibrate after changing.
+    val HID_STEP = int("hid_step", 18, 1..60)
+    val HID_SWAP_PAGE_KEYS = bool("hid_swap_page_keys", true)  // S4: right button = next page
     val REQUIRE_PIN = bool("require_pin", false, restart = true)
     val ALLOW_NEW_CONN = bool("allow_new_conn", true, restart = true)
     val AUDIO_LATENCY_MS = int("audio_latency_ms", -1, -1..1000, restart = true)

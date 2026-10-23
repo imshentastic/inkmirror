@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.jqssun.airplay"
+        applicationId = "io.github.imshentastic.airplay.s4"  // AirPlay S4 fork: installs beside the original
         minSdk = 23
         targetSdk = 37
         versionCode = 36
@@ -40,6 +40,8 @@ android {
             cmake {
                 arguments += "-DANDROID_STL=c++_shared"
                 arguments += "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+                // OpenSSL's CMake step needs Python; point it at the system one when CMake cannot find it
+                if (file("/usr/bin/python3").exists()) arguments += "-DPython_EXECUTABLE=/usr/bin/python3"
             }
         }
     }

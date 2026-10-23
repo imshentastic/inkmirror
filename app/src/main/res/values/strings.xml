@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AirPlay Server</string>
+    <string name="app_name">AirPlay S4</string>
 
     <!-- Notification -->
     <string name="notification_channel">AirPlay Service</string>
@@ -201,4 +201,11 @@
     <string name="debug_audio_glitch">Glitch: trim=%1$d drop=%2$d sil=%3$d ur=%4$d xrun=%5$d</string>
     <string name="debug_audio_decode">Decode: %1$s</string>
     <string name="debug_clients">Senders: %1$d</string>
+    <string name="setting_mirror_zoom">Mirror zoom (%)</string>
+    <string name="setting_mirror_zoom_desc">100 fits the whole screen. Higher zooms in to fill more of the width, cutting off some of the top and bottom.</string>
+    <string name="setting_mirror_crop_top">Cut from top (%)</string>
+    <string name="setting_mirror_crop_top_desc">Share of the cut taken from the top (the rest from the bottom). The phone\'s status bar is at the top.</string>
+    <string name="section_mirror_s4">Mirror</string>
+    <string name="setting_hid_step">Pointer speed (step)</string>
+    <string name="setting_hid_step_desc">Distance per Bluetooth report. Higher moves the phone\'s pointer faster but less precisely. Calibrate again after changing it.</string>
 </resources>

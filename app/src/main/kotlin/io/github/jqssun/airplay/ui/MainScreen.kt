@@ -37,6 +37,14 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.layout.onSizeChanged
+import io.github.jqssun.airplay.s4.HidPointer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -109,10 +117,23 @@ fun MainScreen(
     // don't use movableContentOf: moving AndroidView across subcomposition boundaries makes it crash on reparent
     val video: @Composable () -> Unit = {
         val aspect by viewModel.videoAspect.collectAsState()
+        val zoomPct by viewModel.pref(Prefs.MIRROR_ZOOM).collectAsState()
+        val topPct by viewModel.pref(Prefs.MIRROR_CROP_TOP).collectAsState()
+        val panXPct by viewModel.pref(Prefs.MIRROR_PAN_X).collectAsState()
+        // S4: size the surface to "fit" times the zoom; whatever is larger than the
+        // screen falls off its edges (split top/bottom by topPct, centred sideways)
         VideoSurfaceView(
             onSurfaceAvailable = onSurfaceAvailable,
             onSurfaceDestroyed = onSurfaceDestroyed,
-            aspectRatio = aspect
+            applyAspectRatio = false,
+            modifier = Modifier.fillMaxSize().layout { measurable, constraints ->
+                val cw = constraints.maxWidth
+                val ch = constraints.maxHeight
+                val g = mirrorGeometry(cw, ch, aspect, zoomPct, topPct, panXPct)
+                    ?: floatArrayOf(0f, 0f, cw.toFloat(), ch.toFloat())
+                val placeable = measurable.measure(Constraints.fixed(g[2].toInt(), g[3].toInt()))
+                layout(cw, ch) { placeable.place(g[0].toInt(), g[1].toInt()) }
+            }
         )
     }
 
@@ -789,19 +810,181 @@ private fun FullscreenVideo(
         controlsVisible = false
     }
 
+    // S4: touch on the mirror -> Bluetooth mouse on the phone
+    val context = LocalContext.current
+    val hidEnabled by viewModel.pref(Prefs.HID_ENABLED).collectAsState()
+    val countsW by viewModel.pref(Prefs.HID_COUNTS_W).collectAsState()
+    val countsH by viewModel.pref(Prefs.HID_COUNTS_H).collectAsState()
+    val offX by viewModel.pref(Prefs.HID_OFFSET_X).collectAsState()
+    val offY by viewModel.pref(Prefs.HID_OFFSET_Y).collectAsState()
+    val hidStep by viewModel.pref(Prefs.HID_STEP).collectAsState()
+    LaunchedEffect(hidStep) { HidPointer.stepCounts = hidStep }
+    val aspect by viewModel.videoAspect.collectAsState()
+    val zoomPct by viewModel.pref(Prefs.MIRROR_ZOOM).collectAsState()
+    val topPct by viewModel.pref(Prefs.MIRROR_CROP_TOP).collectAsState()
+    val panXPct by viewModel.pref(Prefs.MIRROR_PAN_X).collectAsState()
+    var calibrating by remember { mutableStateOf(false) }
+    var calStep by remember { mutableStateOf(0) }
+    var calFirst by remember { mutableStateOf(0f to 0f) }
+    var s4Bar by remember { mutableStateOf(false) }
+    var boxSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    LaunchedEffect(hidEnabled) { if (hidEnabled) HidPointer.start(context) }
+    DisposableEffect(Unit) {
+        HidPointer.mirrorShowing = true
+        onDispose { HidPointer.mirrorShowing = false }
+    }
+    LaunchedEffect(countsW, countsH, offX, offY) {
+        HidPointer.countsPerWidth = countsW
+        HidPointer.countsPerHeight = countsH
+        HidPointer.offsetX = offX
+        HidPointer.offsetY = offY
+    }
+    val cornerPx = with(androidx.compose.ui.platform.LocalDensity.current) { 64.dp.toPx() }
+    // screen point -> fraction of the phone screen (same geometry as the mirror layout)
+    fun toPhone(o: androidx.compose.ui.geometry.Offset): Pair<Float, Float>? {
+        val g = mirrorGeometry(boxSize.width, boxSize.height, aspect, zoomPct, topPct, panXPct) ?: return null
+        val u = (o.x - g[0]) / g[2]
+        val v = (o.y - g[1]) / g[3]
+        return if (u in 0f..1f && v in 0f..1f) u to v else null
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(Unit) { detectTapGestures { tapTick++ } },
+            .onSizeChanged { boxSize = it }
+            // S4: two fingers pinch to zoom and drag to move around the zoomed mirror
+            .pointerInput(aspect, boxSize) {
+                awaitEachGesture {
+                    var zoomF = viewModel.pref(Prefs.MIRROR_ZOOM).value.toFloat()
+                    var top = viewModel.pref(Prefs.MIRROR_CROP_TOP).value.toFloat()
+                    var panX = viewModel.pref(Prefs.MIRROR_PAN_X).value.toFloat()
+                    do {
+                        // Initial pass: claim two-finger events before tap/scroll see them
+                        val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                        val down = event.changes.count { it.pressed }
+                        if (down >= 2) {
+                            val zc = event.calculateZoom()
+                            val pan = event.calculatePan()
+                            zoomF = (zoomF * zc).coerceIn(100f, 400f)
+                            val g = mirrorGeometry(boxSize.width, boxSize.height, aspect, zoomF.toInt(), top.toInt(), panX.toInt())
+                            if (g != null) {
+                                val exX = g[2] - boxSize.width
+                                val exY = g[3] - boxSize.height
+                                // dragging the content right reveals more of its left side
+                                if (exX > 1f) panX = (panX - pan.x / exX * 100f).coerceIn(0f, 100f)
+                                if (exY > 1f) top = (top - pan.y / exY * 100f).coerceIn(0f, 100f)
+                            }
+                            viewModel.set(Prefs.MIRROR_ZOOM, zoomF.toInt())
+                            viewModel.set(Prefs.MIRROR_CROP_TOP, top.toInt())
+                            viewModel.set(Prefs.MIRROR_PAN_X, panX.toInt())
+                            event.changes.forEach { it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                }
+            }
+            .pointerInput(hidEnabled, calibrating, aspect, zoomPct, topPct, panXPct, boxSize) {
+                detectTapGestures(
+                    onTap = { o ->
+                        val inCorner = o.x > size.width - cornerPx && o.y < cornerPx
+                        val p = toPhone(o)
+                        when {
+                            inCorner -> s4Bar = !s4Bar
+                            !hidEnabled -> tapTick++
+                            calibrating && p != null -> {
+                                if (calStep == 0) {
+                                    calFirst = p
+                                    calStep = 1
+                                    HidPointer.calibrationMove(1)
+                                } else {
+                                    calibrating = false
+                                    calStep = 0
+                                    val a = HidPointer.CAL_POINTS[0]
+                                    val b = HidPointer.CAL_POINTS[1]
+                                    val du = (p.first - calFirst.first).coerceAtLeast(0.05f)
+                                    // y counts go up from the bottom: the 2nd point is higher (smaller v)
+                                    val dv = (calFirst.second - p.second).coerceAtLeast(0.05f)
+                                    val w = ((b[0] - a[0]) / du).toInt().coerceIn(10, 10000)
+                                    val h = ((b[1] - a[1]) / dv).toInt().coerceIn(10, 10000)
+                                    val ox = (a[0] - calFirst.first * w).toInt().coerceIn(-2000, 2000)
+                                    val oy = (a[1] - (1f - calFirst.second) * h).toInt().coerceIn(-2000, 2000)
+                                    android.util.Log.i("S4HidPointer", "calibration: per width $w height $h offset $ox,$oy")
+                                    viewModel.set(Prefs.HID_COUNTS_W, w)
+                                    viewModel.set(Prefs.HID_COUNTS_H, h)
+                                    viewModel.set(Prefs.HID_OFFSET_X, ox)
+                                    viewModel.set(Prefs.HID_OFFSET_Y, oy)
+                                }
+                            }
+                            p != null -> HidPointer.tap(p.first, p.second)
+                            else -> tapTick++
+                        }
+                    },
+                    onLongPress = { o ->
+                        val p = toPhone(o)
+                        if (hidEnabled && !calibrating && p != null) HidPointer.press(p.first, p.second)
+                    }
+                )
+            }
+            .pointerInput(hidEnabled) {
+                var acc = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { acc = 0f },
+                    onVerticalDrag = { change, dy ->
+                        if (!hidEnabled) return@detectVerticalDragGestures
+                        change.consume()
+                        acc += dy
+                        val step = 24.dp.toPx()
+                        val notches = (acc / step).toInt()
+                        if (notches != 0) {
+                            // drag up = scroll content up the page, like a finger swipe
+                            HidPointer.scroll(notches)
+                            acc -= notches * step
+                        }
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         video()
+        // S4: high-contrast bar, toggled by a tap in the top-right corner (e-ink friendly)
+        if (s4Bar && hidEnabled) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    if (HidPointer.connected) "Mouse connected" else "Mouse not connected",
+                    color = Color.Black,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Button(
+                    onClick = { s4Bar = false; calibrating = true; calStep = 0; HidPointer.calibrationMove(0) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+                ) { Text("Calibrate") }
+                Button(
+                    onClick = { s4Bar = false; onExitFullscreen() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+                ) { Text("Exit") }
+            }
+        }
+        if (calibrating) {
+            Text(
+                text = if (calStep == 0) "1 of 2: tap where the pointer is" else "2 of 2: tap where the pointer is",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.Black,
+                modifier = Modifier.align(Alignment.BottomCenter).background(Color.White).padding(12.dp)
+            )
+        }
         androidx.compose.animation.AnimatedVisibility(
             visible = controlsVisible,
             modifier = Modifier.align(Alignment.TopEnd)
         ) {
-            Row(modifier = Modifier.padding(8.dp)) {
+            Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onPip, modifier = Modifier.dpadFocus()) {
                     Icon(
                         painterResource(R.drawable.ic_pip), contentDescription = stringResource(R.string.cd_pip),
@@ -1114,3 +1297,19 @@ private fun debugOverlaySections(context: Context, info: DebugInfo): List<DebugS
 private fun formatDecode(meanUs: Int, maxUs: Int, held: Int, errors: Int): String =
     (if (meanUs == 0) "held=$held"
     else "%.1f/%.1f ms held=%d".format(meanUs / 1000.0, maxUs / 1000.0, held)) + " errs=$errors"
+
+
+/** S4: mirror placement [x, y, width, height] in px, as laid out by the mirror view. */
+internal fun mirrorGeometry(cw: Int, ch: Int, aspect: Float, zoomPct: Int, topPct: Int, panXPct: Int = 50): FloatArray? {
+    if (cw <= 0 || ch <= 0) return null
+    val a = if (aspect > 0f) aspect else 16f / 9f
+    var w = cw.toFloat()
+    var h = w / a
+    if (h > ch) { h = ch.toFloat(); w = h * a }
+    val z = zoomPct.coerceIn(100, 400) / 100f
+    val sw = (w * z).toInt().coerceAtLeast(1)
+    val sh = (h * z).toInt().coerceAtLeast(1)
+    val x = if (sw > cw) -((sw - cw) * panXPct.coerceIn(0, 100) / 100) else (cw - sw) / 2
+    val y = if (sh > ch) -((sh - ch) * topPct.coerceIn(0, 100) / 100) else (ch - sh) / 2
+    return floatArrayOf(x.toFloat(), y.toFloat(), sw.toFloat(), sh.toFloat())
+}

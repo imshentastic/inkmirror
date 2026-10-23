@@ -52,6 +52,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
     val launchOnConnect by viewModel.pref(Prefs.LAUNCH_ON_CONNECT).collectAsState()
     val maxFps by viewModel.pref(Prefs.MAX_FPS).collectAsState()
     val overscanned by viewModel.pref(Prefs.OVERSCANNED).collectAsState()
+    val mirrorZoom by viewModel.pref(Prefs.MIRROR_ZOOM).collectAsState()
+    val mirrorCropTop by viewModel.pref(Prefs.MIRROR_CROP_TOP).collectAsState()
     val requirePin by viewModel.pref(Prefs.REQUIRE_PIN).collectAsState()
     val allowNewConn by viewModel.pref(Prefs.ALLOW_NEW_CONN).collectAsState()
     val usbOnly by viewModel.pref(Prefs.USB_ONLY).collectAsState()
@@ -87,6 +89,29 @@ fun SettingsScreen(viewModel: MainViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(vertical = 8.dp)
     ) {
+        // S4: the mirror zoom rows first, they are the ones changed most
+        SectionHeader(stringResource(R.string.section_mirror_s4))
+
+        SettingChipField(
+            title = stringResource(R.string.setting_mirror_zoom),
+            description = stringResource(R.string.setting_mirror_zoom_desc),
+            value = mirrorZoom.toString(),
+            presets = listOf("100" to "Fit", "110" to "110", "120" to "120", "130" to "130"),
+            placeholder = "100",
+            keyboardType = KeyboardType.Number,
+            onValueChange = { it.toIntOrNull()?.let { v -> viewModel.set(Prefs.MIRROR_ZOOM, v.coerceIn(100, 300)) } }
+        )
+
+        SettingChipField(
+            title = stringResource(R.string.setting_mirror_crop_top),
+            description = stringResource(R.string.setting_mirror_crop_top_desc),
+            value = mirrorCropTop.toString(),
+            presets = listOf("50" to "50", "65" to "65", "80" to "80", "100" to "100"),
+            placeholder = "65",
+            keyboardType = KeyboardType.Number,
+            onValueChange = { it.toIntOrNull()?.let { v -> viewModel.set(Prefs.MIRROR_CROP_TOP, v.coerceIn(0, 100)) } }
+        )
+
         SectionHeader(stringResource(R.string.section_server))
 
         SettingTextField(
@@ -208,6 +233,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
             checked = overscanned,
             onCheckedChange = { viewModel.set(Prefs.OVERSCANNED, it) }
         )
+
 
         SectionHeader(stringResource(R.string.section_decode))
 
