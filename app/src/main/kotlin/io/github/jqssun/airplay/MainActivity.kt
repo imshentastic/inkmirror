@@ -161,18 +161,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // S4: while the mirror is showing, the page buttons turn pages on the phone
+    // InkMirror: while the mirror is showing, the page buttons turn pages on the phone
     // (arrow keys over the Bluetooth keyboard) instead of changing the volume
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         val code = event.keyCode
         val page = code == android.view.KeyEvent.KEYCODE_VOLUME_UP || code == android.view.KeyEvent.KEYCODE_VOLUME_DOWN ||
             code == android.view.KeyEvent.KEYCODE_PAGE_UP || code == android.view.KeyEvent.KEYCODE_PAGE_DOWN
-        if (page && io.github.jqssun.airplay.s4.HidPointer.mirrorShowing && io.github.jqssun.airplay.s4.HidPointer.connected) {
+        if (page && io.github.jqssun.airplay.inkmirror.HidPointer.mirrorShowing && io.github.jqssun.airplay.inkmirror.HidPointer.connected) {
             if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 val next = code == android.view.KeyEvent.KEYCODE_VOLUME_DOWN || code == android.view.KeyEvent.KEYCODE_PAGE_DOWN
                 val swap = viewModel.pref(io.github.jqssun.airplay.Prefs.HID_SWAP_PAGE_KEYS).value
-                io.github.jqssun.airplay.s4.HidPointer.key(
-                    if (next != swap) io.github.jqssun.airplay.s4.HidPointer.KEY_RIGHT else io.github.jqssun.airplay.s4.HidPointer.KEY_LEFT
+                io.github.jqssun.airplay.inkmirror.HidPointer.key(
+                    if (next != swap) io.github.jqssun.airplay.inkmirror.HidPointer.KEY_RIGHT else io.github.jqssun.airplay.inkmirror.HidPointer.KEY_LEFT
                 )
             }
             return true

@@ -1,4 +1,4 @@
-package io.github.jqssun.airplay.s4
+package io.github.jqssun.airplay.inkmirror
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -12,7 +12,7 @@ import android.util.Log
 import java.util.concurrent.Executors
 
 /**
- * S4: this app as a Bluetooth mouse for the phone it mirrors.
+ * InkMirror: this app as a Bluetooth mouse for the phone it mirrors.
  *
  * Android's HID device profile (API 28+) lets the app present itself as a
  * standard relative mouse (3 buttons, X, Y, wheel). iOS shows a pointer for it
@@ -26,8 +26,8 @@ import java.util.concurrent.Executors
  */
 @SuppressLint("MissingPermission")
 object HidPointer {
-    // also a keyboard (report id 2): the S4 page buttons send arrow keys
-    private const val TAG = "S4HidPointer"
+    // also a keyboard (report id 2): the tablet page buttons send arrow keys
+    private const val TAG = "InkMirrorHid"
     private const val REPORT_ID = 1
     private const val KEYBOARD_ID = 2
     // USB HID key codes
@@ -100,7 +100,7 @@ object HidPointer {
                 val h = proxy as BluetoothHidDevice
                 hid = h
                 val sdp = BluetoothHidDeviceAppSdpSettings(
-                    "S4 Pointer", "Mirror touch for AirPlay S4", "S4",
+                    "InkMirror", "Touch control for the mirrored phone", "InkMirror",
                     BluetoothHidDevice.SUBCLASS1_COMBO, DESCRIPTOR
                 )
                 val ok = h.registerApp(sdp, null, null, worker, callback)

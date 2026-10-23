@@ -1,17 +1,17 @@
-package io.github.jqssun.airplay.s4
+package io.github.jqssun.airplay.inkmirror
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
 /**
- * S4: drive the Bluetooth mouse from adb, for testing and calibration.
+ * InkMirror: drive the Bluetooth mouse from adb, for testing and calibration.
  * Protected by android.permission.DUMP (only adb/shell can send it), like the
  * app's SettingsReceiver.
- *   am broadcast -n io.github.jqssun.airplay.s4/io.github.jqssun.airplay.s4.S4DebugReceiver \
- *     -a io.github.jqssun.airplay.s4.HID --es cmd "home" | "move 100 0" | "click" | "tap 0.5 0.5"
+ *   am broadcast -n io.github.imshentastic.inkmirror/io.github.jqssun.airplay.inkmirror.InkMirrorDebugReceiver \
+ *     -a io.github.jqssun.airplay.inkmirror.HID --es cmd "home" | "move 100 0" | "click" | "tap 0.5 0.5"
  */
-class S4DebugReceiver : BroadcastReceiver() {
+class InkMirrorDebugReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val parts = (intent.getStringExtra("cmd") ?: return).trim().split(Regex("\\s+"))
         HidPointer.start(context)

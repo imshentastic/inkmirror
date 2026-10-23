@@ -13,7 +13,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- S4: Bluetooth mouse (HID device) for the mirrored phone -->
+    <!-- InkMirror: Bluetooth mouse (HID device) for the mirrored phone -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -84,9 +84,9 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-            <!-- S4: adb test hook for the Bluetooth mouse -->
+            <!-- InkMirror: adb test hook for the Bluetooth mouse -->
         <receiver
-            android:name=".s4.S4DebugReceiver"
+            android:name=".inkmirror.InkMirrorDebugReceiver"
             android:exported="true"
             android:permission="android.permission.DUMP" />
 </application>

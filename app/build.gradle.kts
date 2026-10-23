@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.imshentastic.airplay.s4"  // AirPlay S4 fork: installs beside the original
+        applicationId = "io.github.imshentastic.inkmirror"  // InkMirror: installs beside the original
         minSdk = 23
         targetSdk = 37
         versionCode = 36

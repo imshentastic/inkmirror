@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AirPlay S4</string>
+    <string name="app_name">InkMirror</string>
 
     <!-- Notification -->
     <string name="notification_channel">AirPlay Service</string>
@@ -205,7 +205,7 @@
     <string name="setting_mirror_zoom_desc">100 fits the whole screen. Higher zooms in to fill more of the width, cutting off some of the top and bottom.</string>
     <string name="setting_mirror_crop_top">Cut from top (%)</string>
     <string name="setting_mirror_crop_top_desc">Share of the cut taken from the top (the rest from the bottom). The phone\'s status bar is at the top.</string>
-    <string name="section_mirror_s4">Mirror</string>
+    <string name="section_mirror_inkmirror">Mirror</string>
     <string name="setting_hid_step">Pointer speed (step)</string>
     <string name="setting_hid_step_desc">Distance per Bluetooth report. Higher moves the phone\'s pointer faster but less precisely. Calibrate again after changing it.</string>
 </resources>

@@ -42,7 +42,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.layout.onSizeChanged
-import io.github.jqssun.airplay.s4.HidPointer
+import io.github.jqssun.airplay.inkmirror.HidPointer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import android.content.Context
@@ -120,7 +120,7 @@ fun MainScreen(
         val zoomPct by viewModel.pref(Prefs.MIRROR_ZOOM).collectAsState()
         val topPct by viewModel.pref(Prefs.MIRROR_CROP_TOP).collectAsState()
         val panXPct by viewModel.pref(Prefs.MIRROR_PAN_X).collectAsState()
-        // S4: size the surface to "fit" times the zoom; whatever is larger than the
+        // InkMirror: size the surface to "fit" times the zoom; whatever is larger than the
         // screen falls off its edges (split top/bottom by topPct, centred sideways)
         VideoSurfaceView(
             onSurfaceAvailable = onSurfaceAvailable,
@@ -810,7 +810,7 @@ private fun FullscreenVideo(
         controlsVisible = false
     }
 
-    // S4: touch on the mirror -> Bluetooth mouse on the phone
+    // InkMirror: touch on the mirror -> Bluetooth mouse on the phone
     val context = LocalContext.current
     val hidEnabled by viewModel.pref(Prefs.HID_ENABLED).collectAsState()
     val countsW by viewModel.pref(Prefs.HID_COUNTS_W).collectAsState()
@@ -853,7 +853,7 @@ private fun FullscreenVideo(
             .fillMaxSize()
             .background(Color.Black)
             .onSizeChanged { boxSize = it }
-            // S4: two fingers pinch to zoom and drag to move around the zoomed mirror
+            // InkMirror: two fingers pinch to zoom and drag to move around the zoomed mirror
             .pointerInput(aspect, boxSize) {
                 awaitEachGesture {
                     var zoomF = viewModel.pref(Prefs.MIRROR_ZOOM).value.toFloat()
@@ -908,7 +908,7 @@ private fun FullscreenVideo(
                                     val h = ((b[1] - a[1]) / dv).toInt().coerceIn(10, 10000)
                                     val ox = (a[0] - calFirst.first * w).toInt().coerceIn(-2000, 2000)
                                     val oy = (a[1] - (1f - calFirst.second) * h).toInt().coerceIn(-2000, 2000)
-                                    android.util.Log.i("S4HidPointer", "calibration: per width $w height $h offset $ox,$oy")
+                                    android.util.Log.i("InkMirrorHid", "calibration: per width $w height $h offset $ox,$oy")
                                     viewModel.set(Prefs.HID_COUNTS_W, w)
                                     viewModel.set(Prefs.HID_COUNTS_H, h)
                                     viewModel.set(Prefs.HID_OFFSET_X, ox)
@@ -946,7 +946,7 @@ private fun FullscreenVideo(
         contentAlignment = Alignment.Center
     ) {
         video()
-        // S4: high-contrast bar, toggled by a tap in the top-right corner (e-ink friendly)
+        // InkMirror: high-contrast bar, toggled by a tap in the top-right corner (e-ink friendly)
         if (s4Bar && hidEnabled) {
             Row(
                 modifier = Modifier
@@ -1299,7 +1299,7 @@ private fun formatDecode(meanUs: Int, maxUs: Int, held: Int, errors: Int): Strin
     else "%.1f/%.1f ms held=%d".format(meanUs / 1000.0, maxUs / 1000.0, held)) + " errs=$errors"
 
 
-/** S4: mirror placement [x, y, width, height] in px, as laid out by the mirror view. */
+/** InkMirror: mirror placement [x, y, width, height] in px, as laid out by the mirror view. */
 internal fun mirrorGeometry(cw: Int, ch: Int, aspect: Float, zoomPct: Int, topPct: Int, panXPct: Int = 50): FloatArray? {
     if (cw <= 0 || ch <= 0) return null
     val a = if (aspect > 0f) aspect else 16f / 9f

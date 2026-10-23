@@ -89,8 +89,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(vertical = 8.dp)
     ) {
-        // S4: the mirror zoom rows first, they are the ones changed most
-        SectionHeader(stringResource(R.string.section_mirror_s4))
+        // InkMirror: the mirror zoom rows first, they are the ones changed most
+        SectionHeader(stringResource(R.string.section_mirror_inkmirror))
 
         SettingChipField(
             title = stringResource(R.string.setting_mirror_zoom),
