@@ -976,37 +976,6 @@ private fun FullscreenVideo(
                 ) { Text("Exit") }
             }
         }
-        if (hidEnabled && !hintDismissed && !hintClosed && !calibrating && !cornerBar) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 56.dp, end = 8.dp)  // below the PiP and exit icons
-                    .widthIn(max = 300.dp)
-                    .background(Color.White)
-                    .border(2.dp, Color.Black)
-                    // taps on the card stay here instead of clicking on the phone
-                    .pointerInput(Unit) { detectTapGestures { } }
-                    .padding(12.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                Icon(Icons.Default.NorthEast, contentDescription = null, tint = Color.Black, modifier = Modifier.size(36.dp))
-                Text(
-                    "Tap this corner any time for Calibrate and Exit. Calibrate once so taps land in the right place.",
-                    color = Color.Black,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { hintClosed = true; calibrating = true; calStep = 0; HidPointer.calibrationMove(0) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
-                    ) { Text("Calibrate") }
-                    OutlinedButton(onClick = { hintClosed = true }) { Text("Close", color = Color.Black) }
-                }
-                TextButton(onClick = { viewModel.set(Prefs.HID_HINT_DISMISSED, true) }) {
-                    Text("Don't show again", color = Color.Black)
-                }
-            }
-        }
         if (calibrating) {
             Text(
                 text = if (calStep == 0) "1 of 2: tap where the pointer is" else "2 of 2: tap where the pointer is",
@@ -1031,6 +1000,43 @@ private fun FullscreenVideo(
                         Icons.Default.FullscreenExit, contentDescription = stringResource(R.string.cd_exit_fullscreen),
                         tint = Color.White.copy(alpha = 0.7f)
                     )
+                }
+            }
+        }
+        // drawn after the PiP and exit icons so it sits on top of them, flush in the corner
+        if (hidEnabled && !hintDismissed && !hintClosed && !calibrating && !cornerBar) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .widthIn(max = 300.dp)
+                    .background(Color.White)
+                    .border(2.dp, Color.Black)
+                    // taps on the card stay here instead of clicking on the phone
+                    .pointerInput(Unit) { detectTapGestures { } }
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                Icon(Icons.Default.NorthEast, contentDescription = null, tint = Color.Black, modifier = Modifier.size(36.dp))
+                Text(
+                    "Tap this corner any time to Calibrate. Calibrate once so taps land in the right place.",
+                    color = Color.Black,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "You can also pinch to zoom in and out to change your aspect ratio.",
+                    color = Color.Black,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { hintClosed = true; calibrating = true; calStep = 0; HidPointer.calibrationMove(0) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+                    ) { Text("Calibrate") }
+                    OutlinedButton(onClick = { hintClosed = true }) { Text("Close", color = Color.Black) }
+                }
+                TextButton(onClick = { viewModel.set(Prefs.HID_HINT_DISMISSED, true) }) {
+                    Text("Don't show again", color = Color.Black)
                 }
             }
         }
