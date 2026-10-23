@@ -16,6 +16,16 @@ What this fork adds:
 
 Setup: pair the reader with the phone over Bluetooth while this app is running (it must be the only Bluetooth mouse app), mirror from Control Center, then calibrate once. If the phone was paired before with another mouse app, forget the device on both sides and pair again. Close other Bluetooth mouse apps first.
 
+## Requirements and limits
+
+- **No root needed.** Mirroring and touch control use standard Android APIs.
+- **Touch control and page buttons need Android 9 or newer** (the Bluetooth HID device profile). On Android 6-8 the app still mirrors, without control.
+- **Android 12 and newer** ask for the Bluetooth ("Nearby devices") permission the first time; touch control stays off until it is granted.
+- **Some device makers switch off the Bluetooth HID device profile.** On those devices mirroring works but touch control and page buttons do not; the status bar (tap the top-right corner of the mirror) says "Touch control not supported on this device".
+- **Page buttons** must send volume or page up/down keys, as most e-readers do. Only confirmed on the Xteink S4.
+- **Touch control is tested with an iPhone** (AssistiveTouch on). The mirror itself works with any AirPlay screen-mirroring sender.
+- If the tablet stops appearing as a mirroring target, restart the tablet.
+
 ## Based on AirPlay Receiver for Android
 
 Everything else - the AirPlay receiver itself, its features, settings, ADB configuration and build instructions - is documented in the original project: **[AirPlay Receiver for Android](https://github.com/jqssun/android-airplay-server)**. Build this fork the same way (`git submodule update --init`, then `./gradlew assembleDebug`).

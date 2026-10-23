@@ -958,7 +958,7 @@ private fun FullscreenVideo(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    if (HidPointer.connected) "Mouse connected" else "Mouse not connected",
+                    HidPointer.status(context),
                     color = Color.Black,
                     style = MaterialTheme.typography.bodyMedium
                 )

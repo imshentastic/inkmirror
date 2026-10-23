@@ -7,7 +7,10 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothHidDevice
 import android.bluetooth.BluetoothHidDeviceAppSdpSettings
 import android.bluetooth.BluetoothProfile
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import java.util.concurrent.Executors
 
@@ -77,6 +80,21 @@ object HidPointer {
     @Volatile var stepDelayMs = 8L
 
     val connected get() = hid != null && host != null
+    /** False when this device has no Bluetooth HID device profile (Android < 9, or switched off by the maker). */
+    @Volatile var supported = true
+        private set
+
+    /** One line for the mirror's status bar. */
+    fun status(context: Context) = when {
+        !supported -> "Touch control not supported on this device"
+        !hasPermission(context) -> "Bluetooth permission needed"
+        connected -> "Mouse connected"
+        else -> "Mouse not connected"
+    }
+
+    // Android 12+ asks for Bluetooth at runtime; older versions grant it at install
+    fun hasPermission(context: Context) = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+        context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
     private val callback = object : BluetoothHidDevice.Callback() {
         override fun onAppStatusChanged(pluggedDevice: BluetoothDevice?, registered: Boolean) {
@@ -93,9 +111,12 @@ object HidPointer {
 
     fun start(context: Context) {
         if (started) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) { supported = false; return }
+        // not started yet: MainActivity calls start() again once the permission is granted
+        if (!hasPermission(context)) { Log.w(TAG, "no BLUETOOTH_CONNECT permission"); return }
         started = true
-        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
-        adapter.getProfileProxy(context.applicationContext, object : BluetoothProfile.ServiceListener {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: run { supported = false; return }
+        val ok = adapter.getProfileProxy(context.applicationContext, object : BluetoothProfile.ServiceListener {
             override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
                 val h = proxy as BluetoothHidDevice
                 hid = h
@@ -112,6 +133,7 @@ object HidPointer {
                 host = null
             }
         }, BluetoothProfile.HID_DEVICE)
+        if (!ok) { Log.w(TAG, "HID device profile not available"); supported = false }
     }
 
     // the phone that pairs as host: the one already plugged, else a bonded phone

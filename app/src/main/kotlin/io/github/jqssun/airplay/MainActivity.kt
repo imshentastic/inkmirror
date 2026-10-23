@@ -59,7 +59,10 @@ class MainActivity : ComponentActivity() {
 
     private val permissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { if (it.isNotEmpty()) _syncLocalNetwork(requested = true) }
+    ) {
+        if (it.isNotEmpty()) _syncLocalNetwork(requested = true)
+        if (it[Manifest.permission.BLUETOOTH_CONNECT] == true) io.github.jqssun.airplay.inkmirror.HidPointer.start(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +73,11 @@ class MainActivity : ComponentActivity() {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
             if (!hasLocalNetwork()) add(Manifest.permission.ACCESS_LOCAL_NETWORK)
+            // InkMirror: touch control is a Bluetooth mouse, a runtime permission on Android 12+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && viewModel.pref(Prefs.HID_ENABLED).value &&
+                !_granted(Manifest.permission.BLUETOOTH_CONNECT)) {
+                add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
         }
         if (missing.isNotEmpty()) permissions.launch(missing.toTypedArray())
 
