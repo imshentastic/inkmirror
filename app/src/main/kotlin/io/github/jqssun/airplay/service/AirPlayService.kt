@@ -369,8 +369,16 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         }
         val effectiveName = prefs[Prefs.SERVER_NAME].ifBlank { Prefs.SERVER_NAME.def }
 
+        // InkMirror: the CPU is only kept awake while a sender is connected and
+        // the screen is on (see _updateWakeLock); otherwise the device sleeps
+        // normally (holding it for the server's whole life drained ~12%/h).
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "airplay:server").apply { acquire() }
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "airplay:server").apply { setReferenceCounted(false) }
+        registerReceiver(_screenReceiver, IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        })
+        _updateWakeLock()
 
         nsdManager = NsdServiceManager(this).apply { acquireMulticastLock() }
 
@@ -508,8 +516,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         }
         nsdManager?.release()
         nsdManager = null
-        wakeLock?.release()
-        wakeLock = null
+        _releaseWakeLock()
         _serverState.value = ServerState.ERROR
         if (foregroundStarted) {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
@@ -543,8 +550,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         usbAdvertiser = null
         nsdManager?.release()
         nsdManager = null
-        wakeLock?.release()
-        wakeLock = null
+        _releaseWakeLock()
         videoRenderer.release()
         airPlayVideoPlayer.stop()
         mediaSession?.isActive = false
@@ -793,15 +799,38 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         _clientVolDir = 0
     }
 
+    // InkMirror: keep the CPU awake only while mirroring with the screen on.
+    private val _screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = _updateWakeLock()
+    }
+
+    @Synchronized
+    private fun _updateWakeLock() {
+        val lock = wakeLock ?: return
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val want = _connectionCount.value > 0 && pm.isInteractive
+        if (want && !lock.isHeld) lock.acquire()
+        else if (!want && lock.isHeld) lock.release()
+    }
+
+    @Synchronized
+    private fun _releaseWakeLock() {
+        if (wakeLock != null) runCatching { unregisterReceiver(_screenReceiver) }
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
+    }
+
     override fun onConnectionInit() {
         val firstConnection = _connectionCount.value == 0
         _connectionCount.value++
+        _updateWakeLock()
         log("Sender connected (${_connectionCount.value})")
         if (firstConnection && shouldLaunchOnConnect()) launchMainActivity()
     }
 
     override fun onConnectionDestroy() {
         _connectionCount.value = (_connectionCount.value - 1).coerceAtLeast(0)
+        _updateWakeLock()
         if (_connectionCount.value == 0) {
             // clients may drop without POST /stop; must run before the poll-state reset
             _endVideoPlayback("AirPlay Video stopped (disconnect)")
