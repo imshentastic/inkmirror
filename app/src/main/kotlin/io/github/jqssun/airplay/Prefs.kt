@@ -115,6 +115,7 @@ object Prefs {
     // lowest: 24-30 lost accuracy). Not in the settings screen; adb only. Recalibrate after changing.
     val HID_STEP = int("hid_step", 18, 1..60)
     val HID_SWAP_PAGE_KEYS = bool("hid_swap_page_keys", true)  // InkMirror: right button = next page
+    val HID_HINT_DISMISSED = bool("hid_hint_dismissed", false)  // InkMirror: "Don't show again" on the corner hint
     val REQUIRE_PIN = bool("require_pin", false, restart = true)
     val ALLOW_NEW_CONN = bool("allow_new_conn", true, restart = true)
     val AUDIO_LATENCY_MS = int("audio_latency_ms", -1, -1..1000, restart = true)

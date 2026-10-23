@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -826,7 +827,10 @@ private fun FullscreenVideo(
     var calibrating by remember { mutableStateOf(false) }
     var calStep by remember { mutableStateOf(0) }
     var calFirst by remember { mutableStateOf(0f to 0f) }
-    var s4Bar by remember { mutableStateOf(false) }
+    var cornerBar by remember { mutableStateOf(false) }
+    // first mirror of a session: point at the hidden corner until "Don't show again"
+    val hintDismissed by viewModel.pref(Prefs.HID_HINT_DISMISSED).collectAsState()
+    var hintClosed by remember { mutableStateOf(false) }
     var boxSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
     LaunchedEffect(hidEnabled) { if (hidEnabled) HidPointer.start(context) }
     DisposableEffect(Unit) {
@@ -889,7 +893,7 @@ private fun FullscreenVideo(
                         val inCorner = o.x > size.width - cornerPx && o.y < cornerPx
                         val p = toPhone(o)
                         when {
-                            inCorner -> s4Bar = !s4Bar
+                            inCorner -> { cornerBar = !cornerBar; hintClosed = true }
                             !hidEnabled -> tapTick++
                             calibrating && p != null -> {
                                 if (calStep == 0) {
@@ -947,7 +951,7 @@ private fun FullscreenVideo(
     ) {
         video()
         // InkMirror: high-contrast bar, toggled by a tap in the top-right corner (e-ink friendly)
-        if (s4Bar && hidEnabled) {
+        if (cornerBar && hidEnabled) {
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -963,13 +967,44 @@ private fun FullscreenVideo(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Button(
-                    onClick = { s4Bar = false; calibrating = true; calStep = 0; HidPointer.calibrationMove(0) },
+                    onClick = { cornerBar = false; calibrating = true; calStep = 0; HidPointer.calibrationMove(0) },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
                 ) { Text("Calibrate") }
                 Button(
-                    onClick = { s4Bar = false; onExitFullscreen() },
+                    onClick = { cornerBar = false; onExitFullscreen() },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
                 ) { Text("Exit") }
+            }
+        }
+        if (hidEnabled && !hintDismissed && !hintClosed && !calibrating && !cornerBar) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 56.dp, end = 8.dp)  // below the PiP and exit icons
+                    .widthIn(max = 300.dp)
+                    .background(Color.White)
+                    .border(2.dp, Color.Black)
+                    // taps on the card stay here instead of clicking on the phone
+                    .pointerInput(Unit) { detectTapGestures { } }
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                Icon(Icons.Default.NorthEast, contentDescription = null, tint = Color.Black, modifier = Modifier.size(36.dp))
+                Text(
+                    "Tap this corner any time for Calibrate and Exit. Calibrate once so taps land in the right place.",
+                    color = Color.Black,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { hintClosed = true; calibrating = true; calStep = 0; HidPointer.calibrationMove(0) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)
+                    ) { Text("Calibrate") }
+                    OutlinedButton(onClick = { hintClosed = true }) { Text("Close", color = Color.Black) }
+                }
+                TextButton(onClick = { viewModel.set(Prefs.HID_HINT_DISMISSED, true) }) {
+                    Text("Don't show again", color = Color.Black)
+                }
             }
         }
         if (calibrating) {
